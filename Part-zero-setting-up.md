@@ -51,6 +51,11 @@ SELECT DISTINCT payment_type, COUNT(*) number_of_rides
 FROM trips 
 WHERE fare_amount < 0 
 GROUP BY payment_type;
+
+--- Check the drop-off time is after the pickup time
+SELECT * 
+FROM trips 
+WHERE tpep_pickup_datetime > tpep_dropoff_datetime;
 ```
 
 To transform the data into the records I wanted, that is no erroneous dates and no negative fares, I used the following from the [notebook](data/yellow_trip/Extract-Transform-Load.ipynb)
@@ -94,6 +99,10 @@ def drop_unwanted_dropoff_dates(df):
 def drop_negative_fares(df):
     return df.filter(pl.col("fare_amount") > 0)
 
+# Remove where the pick up time is after the drop off time
+def drop_time_travel(df):
+    return df.filter(~(pl.col("tpep_pickup_datetime") > pl.col("tpep_dropoff_datetime")))
+    
 # Create a sink, so that when the pipleine is run the streaming data goes to the file
 def write_to_csv(df):
     df.sink_csv("2025_yellow_cab_data.csv")
@@ -108,6 +117,7 @@ df = drop_null_values(df)
 df = drop_unwanted_pickup_dates(df)
 df = drop_unwanted_dropoff_dates(df)
 df = drop_negative_fares(df)
+df = drop_time_travel(df)
 
 # Load
 write_to_csv(df)
