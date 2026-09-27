@@ -1,5 +1,5 @@
 CREATE TABLE trips(
-    id BIGINT GENERATED ALWAYS AS IDENTITY,
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     vendor_id SMALLINT, 	
     tpep_pickup_datetime TIMESTAMP,
     tpep_dropoff_datetime TIMESTAMP,
@@ -23,28 +23,28 @@ CREATE TABLE trips(
 );
 
 
-COPY trips (
-    vendor_id,
-    tpep_pickup_datetime,
-    tpep_dropoff_datetime,
-    passenger_count,
-    trip_distance,
-    store_and_fwd_flag,
-    pu_location_id,	
-    do_location_id,
-    fare_amount,
-    extra,
-    mta_tax,
-    tip_amount,
-    tolls_amount,
-    improvement_surcharge,
-    total_amount,
-    congestion_surcharge,
-    airport_fee,
-    cbd_congestion_fee,
-    payment_type,
-    ratecode_id)
-FROM '/var/lib/postgresql/2025_yellow_cab_data.csv'
-WITH (DELIMITER ',', 
-    HEADER TRUE);
-    
+    COPY trips (
+        vendor_id,
+        tpep_pickup_datetime,
+        tpep_dropoff_datetime,
+        passenger_count,
+        trip_distance,
+        store_and_fwd_flag,
+        pu_location_id,	
+        do_location_id,
+        fare_amount,
+        extra,
+        mta_tax,
+        tip_amount,
+        tolls_amount,
+        improvement_surcharge,
+        total_amount,
+        congestion_surcharge,
+        airport_fee,
+        cbd_congestion_fee,
+        payment_type,
+        ratecode_id)
+    FROM '/var/lib/postgresql/2025_yellow_cab_data.csv'
+    WITH (DELIMITER ',', 
+        HEADER TRUE);
+        
