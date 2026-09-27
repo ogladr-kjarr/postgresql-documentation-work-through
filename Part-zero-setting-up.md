@@ -56,9 +56,26 @@ GROUP BY payment_type;
 SELECT * 
 FROM trips 
 WHERE tpep_pickup_datetime > tpep_dropoff_datetime;
+
+--- Check for long running fares
+SELECT id 
+FROM trips 
+GROUP BY id 
+HAVING max(tpep_dropoff_datetime - tpep_pickup_datetime) > '1 day'::interval;
+
+--- Check for no trip distance journeys
+SELECT * 
+FROM trips 
+WHERE trip_distance = 0
+
+--- Check for obviously erroneous outlier entries
+SELECT fare_amount, trip_distance 
+FROM trips 
+WHERE fare_amount > 1000 AND trip_distance < 100
+ORDER BY trip_distance DESC;
 ```
 
-To transform the data into the records I wanted, that is no erroneous dates and no negative fares, I used the following from the [notebook](data/yellow_trip/Extract-Transform-Load.ipynb)
+To transform the data into the records I wanted, that is no erroneous dates, no negative fares, and no fares over $1000 but with less than 100 miles distance, I used the following from the [notebook](data/yellow_trip/Extract-Transform-Load.ipynb). For fares over 1 day in length, of zero distance trips, I ignored, as I didn't understand how they arose.
 
 ```python
 # Create a scan of all the parquet files in the current directory, but do not load them into memory
@@ -103,6 +120,10 @@ def drop_negative_fares(df):
 def drop_time_travel(df):
     return df.filter(~(pl.col("tpep_pickup_datetime") > pl.col("tpep_dropoff_datetime")))
     
+# Remove where the fare is over £1000 but the distance is less than 100 miles
+def drop_outlier_records(df):
+    return df.filter(~((pl.col("fare_amount") > 100) & (pl.col("trip_distance") < 100)))
+
 # Create a sink, so that when the pipleine is run the streaming data goes to the file
 def write_to_csv(df):
     df.sink_csv("2025_yellow_cab_data.csv")
@@ -118,6 +139,7 @@ df = drop_unwanted_pickup_dates(df)
 df = drop_unwanted_dropoff_dates(df)
 df = drop_negative_fares(df)
 df = drop_time_travel(df)
+df = drop_outlier_records(df)
 
 # Load
 write_to_csv(df)
