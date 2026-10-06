@@ -68,10 +68,16 @@ SELECT *
 FROM trips 
 WHERE trip_distance = 0
 
---- Check for obviously erroneous outlier entries
+--- Check for obviously erroneous outlier entries in the fare amount
 SELECT fare_amount, trip_distance 
 FROM trips 
 WHERE fare_amount > 1000 AND trip_distance < 100
+ORDER BY trip_distance DESC;
+
+--- Check for obviously erroneous outlier entries in the tax and tolls amount
+SELECT mta_tax, tolls_amount, trip_distance
+FROM trips
+WHERE mta_tax > 5000 or tolls_amount > 700
 ORDER BY trip_distance DESC;
 ```
 
@@ -121,8 +127,16 @@ def drop_time_travel(df):
     return df.filter(~(pl.col("tpep_pickup_datetime") > pl.col("tpep_dropoff_datetime")))
     
 # Remove where the fare is over £1000 but the distance is less than 100 miles
-def drop_outlier_records(df):
+def drop_outlier_fare_amount_records(df):
     return df.filter(~((pl.col("fare_amount") > 100) & (pl.col("trip_distance") < 100)))
+
+# Remove where the mta tax is over £5000
+def drop_outlier_mta_tax_records(df):
+    return df.filter(~(pl.col("mta_tax") > 5000))
+
+# Remove where the toll charge is over £700
+def drop_outlier_toll_records(df):
+    return df.filter(~(pl.col("mta_tax") > 700))
 
 # Create a sink, so that when the pipleine is run the streaming data goes to the file
 def write_to_csv(df):
@@ -139,7 +153,9 @@ df = drop_unwanted_pickup_dates(df)
 df = drop_unwanted_dropoff_dates(df)
 df = drop_negative_fares(df)
 df = drop_time_travel(df)
-df = drop_outlier_records(df)
+df = drop_outlier_fare_amount_records(df)
+df = drop_outlier_mta_tax_records(df)
+df = drop_outlier_toll_records(df)
 
 # Load
 write_to_csv(df)

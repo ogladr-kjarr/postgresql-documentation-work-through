@@ -1,3 +1,8 @@
+        ,
+        total_amount NUMERIC(8,2),
+
+
+
 CREATE TABLE trips(
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     vendor_id SMALLINT, 	
@@ -10,7 +15,7 @@ CREATE TABLE trips(
     pu_location_id SMALLINT,	
     do_location_id SMALLINT,
     payment_type VARCHAR(100),
-    fare_amount	NUMERIC(8,2),
+    fare_amount	NUMERIC(8,2) NOT NULL CONSTRAINT positive_fare CHECK (fare_amount > 0),
     extra NUMERIC(8,2),
     mta_tax	NUMERIC(8,2),
     tip_amount NUMERIC(8,2),
@@ -19,7 +24,15 @@ CREATE TABLE trips(
     total_amount NUMERIC(8,2),
     congestion_surcharge NUMERIC(8,2),
     airport_fee	NUMERIC(8,2),
-    cbd_congestion_fee NUMERIC(8,2)
+    cbd_congestion_fee NUMERIC(8,2),
+    extra_fees NUMERIC(8,2) GENERATED ALWAYS AS (extra + 
+                                                 mta_tax + 
+                                                 tolls_amount + 
+                                                 improvement_surcharge + 
+                                                 congestion_surcharge +
+                                                 airport_fee +
+                                                 cbd_congestion_fee ) STORED,
+    CONSTRAINT total_amount_gt_fare_amount CHECK (total_amount > fare_amount)
 );
 
 
