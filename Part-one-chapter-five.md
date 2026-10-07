@@ -37,7 +37,7 @@ CREATE TABLE users (
     ..
 ```
 
-In the two snippets above we see the two ways of using generated values, eiTher `ALWAYS AS` or `BY DEFAULT`. When inserting or updating a table with a `BY DEFAULT` column, it is possible to insert or update the value by including it in the query with a value, so it acts like a default value. However with `ALWAYS AS` you have to explicity say you're going to override it.
+In the two snippets above we see the two ways of using generated values, either `ALWAYS AS` or `BY DEFAULT`. When inserting or updating a table with a `BY DEFAULT` column, it is possible to insert or update the value by including it in the query with a value, so it acts like a default value. However with `ALWAYS AS` you have to explicitly say you're going to override it.
 
 In the users table, it has `BY DEFAULT` and so it is possible to insert or update values directly into this column. If say a bulk insert was created with already existing `user_id` values, the underlying sequence the column is based on needs updating. The snipped below finds the sequence, then sets it value to be the highest ID in the table plus one, so any subsequent inserts still have a unique value in that column.
 
@@ -45,7 +45,7 @@ In the users table, it has `BY DEFAULT` and so it is possible to insert or updat
 SELECT setval(pg_get_serial_sequence('users', 'user_id'), (SELECT coalesce(max(user_id), 0) + 1 FROM users), false);
 ```
 
-Finally when it comes to column values, it is possible to generate columns based on the values of other columns. In the snippet below we see the `extra_fees` column created as the addition of all the additional fees added to a trips fare. At the end the `STORED` command means that the value is stored in the table like all the other columns, like a materialized view. If this were marked `VIRTUAL` instead then it would be computed as necessary in the query referencing it.
+Finally when it comes to column values, it is possible to generate columns based on the values of other columns. In the snippet below we see the `extra_fees` column created as the addition of all the additional fees added to a trips fare. At the end the `STORED` command means that the value is stored in the table like all the other columns, like a materialised view. If this were marked `VIRTUAL` instead then it would be computed as necessary in the query referencing it.
 
 ```sql
 extra_fees NUMERIC(8,2) GENERATED ALWAYS AS (extra + 
@@ -59,7 +59,7 @@ extra_fees NUMERIC(8,2) GENERATED ALWAYS AS (extra +
 
 Column and table constraints are the last aspect of this section. A column constraint is a boolean check that references a single column, whereas a table constraint can reference many.
 
-In the trips table we make the decision that the fare should never be negative, and that the total cost should aways be more than the fare, and so the following named constraints are used. Giving names makes debugging easier when records fail.
+In the trips table we make the decision that the fare should never be negative, and that the total cost should always be more than the fare, and so the following named constraints are used. Giving names makes debugging easier when records fail.
 
 ```sql
 CREATE TABLE trips(
@@ -70,7 +70,7 @@ CREATE TABLE trips(
 );
 ```
 
-As in the users table snippit from above we have seen `NOT NULL` constraints and the `PRIMARY KEY` constraint. It is possible to have more than one constraint on a column, like below with the `NOT NULL` and positive fare constraints:
+As in the users table snippet from above we have seen `NOT NULL` constraints and the `PRIMARY KEY` constraint. It is possible to have more than one constraint on a column, like below with the `NOT NULL` and positive fare constraints:
 
 
 ```sql
@@ -80,7 +80,7 @@ CREATE TABLE trips(
 );
 ```
 
-There is a `UNIQUE` constraint, used in the same way as `NOT NULL` constraint, but can also be a table constraint for multiple columns. This example is contrived as the address_id will always be unique in of itself, so the `UNIQUE` statement is redundan
+There is a `UNIQUE` constraint, used in the same way as `NOT NULL` constraint, but can also be a table constraint for multiple columns. This example is contrived as the address_id will always be unique in of itself, so the `UNIQUE` statement is redundant.
 
 ```sql
 CREATE TABLE addresses (
@@ -90,7 +90,7 @@ CREATE TABLE addresses (
 );
 ```
 
-In the two snippets below we see a users table primary key, and then it being referenced as a foreign key in the addresses table. The `ON DELETE CASCADE` command means that if the row with the referenced primary key is deleted, then all the records in the adresses table with that key as its foreign key will be deleted too.
+In the two snippets below we see a users table primary key, and then it being referenced as a foreign key in the addresses table. The `ON DELETE CASCADE` command means that if the row with the referenced primary key is deleted, then all the records in the addresses table with that key as its foreign key will be deleted too.
 
 ```sql
 CREATE TABLE users (
@@ -106,6 +106,45 @@ CREATE TABLE addresses (
 ```
 
 ### 5.8 to 5.9
+
+There are two main sequences of commands for altering privileges, the first is to change the ownership of an object, and the second to change the privileges of a user on an activity over an object.  The first then looks like the following, where the ownership of a table from the ecommerce example is changed to that of the accounting user. Objects like tables, databases, views and others can change their owner, which by default is the user that created the object.
+
+```sql
+ALTER TABLE payments OWNER TO accounting;
+```
+
+For granting privileges on objects the following command is used. It looks a little different depending on the object being granted privileges on, but it follows a similar pattern for all.
+
+```sql
+GRANT <PRIVILEDGE> ON <OBJECT> TO <ROLE>
+
+GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE payments TO accounting;
+GRANT CONNECT ON DATABASE yellow_cab to analysts;
+```
+
+The above deals with setting permissions on objects as a whole, however when it comes to table objects it is possible to limit even the individual rows that a given role can interact with. All the examples in the documentation hinge around using the identity of the database user logged on running the query, except where there is a check that the database user is not using a network connection.
+
+```sql 
+CREATE TABLE addresses (
+    address_id          bigint GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+    user_id             bigint NOT NULL REFERENCES users ON DELETE CASCADE,
+    ..
+    city                text NOT NULL,
+    region              text,
+    postal_code         text,
+    ..
+);
+```
+
+While using the table above we assume that the users log into the database system with their user_id as the current user. As no role is specified in who the rule applies to it is public, all roles. This is one of the most basic examples, as there is no check for updates, it is based on the using expression.
+
+```sql
+ALTER TABLE addresses ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY user_adresses ON addresses
+    USING (user_id = current_user);
+```
+
 
 ### 5.10 to 5.11
 

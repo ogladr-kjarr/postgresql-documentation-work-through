@@ -7,4 +7,4 @@ In this repository I am going to work through the PostgreSQL documentation, not 
 
 
 Start: 24/09/2026
-4;
+4;2;3;
