@@ -108,15 +108,15 @@ def drop_null_values(df):
 
 # Remove all rows with dates that are either wildly wrong, or in the wrong day for the pickup time
 def drop_unwanted_pickup_dates(df):
-    df = df.with_columns(pl.col("tpep_pickup_datetime").dt.ordinal_day().alias("pickup_doy"))
-    df = df.filter(~pl.col("pickup_doy").is_in([1, 244]))
-    return df.drop("pickup_doy")
+    df = df.with_columns(pl.col("tpep_pickup_datetime").dt.month().alias("pickup_month"))
+    df = df.filter(pl.col("pickup_month").is_in([6, 7, 8]))
+    return df.drop("pickup_month")
 
 # Remove all rows with dates that are straddling the times the data is valid for, or are very wrong
 def drop_unwanted_dropoff_dates(df):
-    df = df.with_columns(pl.col("tpep_dropoff_datetime").dt.ordinal_day().alias("dropoff_doy"))
-    df = df.filter(~pl.col("dropoff_doy").is_in([151, 244, 245]))
-    return df.drop("dropoff_doy")
+    df = df.with_columns(pl.col("tpep_dropoff_datetime").dt.month().alias("dropoff_month"))
+    df = df.filter(pl.col("dropoff_month").is_in([6, 7, 8]))
+    return df.drop("dropoff_month")
 
 # Remove where the fare is negative
 def drop_negative_fares(df):
