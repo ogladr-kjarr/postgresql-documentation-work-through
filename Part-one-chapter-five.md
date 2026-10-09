@@ -107,7 +107,7 @@ CREATE TABLE addresses (
 
 ### 5.8 to 5.9
 
-There are two main sequences of commands for altering privileges, the first is to change the ownership of an object, and the second to change the privileges of a user on an activity over an object.  The first then looks like the following, where the ownership of a table from the ecommerce example is changed to that of the accounting user. Objects like tables, databases, views and others can change their owner, which by default is the user that created the object.
+There are two main sequences of commands for altering privileges, the first is to change the ownership of an object, and the second to change the privileges of a user on an activity over an object.  The first then looks like the following, where the ownership of a table from the e-commerce example is changed to that of the accounting user. Objects like tables, databases, views and others can change their owner, which by default is the user that created the object.
 
 ```sql
 ALTER TABLE payments OWNER TO accounting;
@@ -136,7 +136,7 @@ CREATE TABLE addresses (
 );
 ```
 
-While using the table above we assume that the users log into the database system with their user_id as the current user. As no role is specified in who the rule applies to it is public, all roles. This is one of the most basic examples, as there is no check for updates, it is based on the using expression.
+While using the table above we assume that the users log into the database system with their `user_id` as the current user. As no role is specified in who the rule applies to it is public, all roles. This is one of the most basic examples, and the check expression for updates and inserts is left out, so it is based on the using expression instead.
 
 ```sql
 ALTER TABLE addresses ENABLE ROW LEVEL SECURITY;
@@ -145,7 +145,63 @@ CREATE POLICY user_adresses ON addresses
     USING (user_id = current_user);
 ```
 
+### 5.12
 
-### 5.10 to 5.11
+Partitioning wasn't a feature when I was a PostgreSQL DBA back in version 8. Of the three partitioning schemes, I will implement range partitioning for the yellow cab data, using the pickup datetime as the range definer.
 
-### 5.12 to 5.15
+In the table below you can see that the primary key has been changed from the `ID` to the `ID` and `tpep_pickup_datetime`, this is because the partitioning key needs to be part of the primary key. I also changed the ETL script to get the data into the correct monthly brackets, as there were data outside the partition tables ranges, so the import failed as there was nowhere for it to go.
+
+The command below creates the partition table, it holds no data. As you can see the primary key is now composite and the `tpep_pickup_datetime` column is the range partition key.
+
+```sql
+CREATE TABLE par_trips (
+    id BIGINT GENERATED ALWAYS AS IDENTITY,
+    vendor_id SMALLINT, 	
+    tpep_pickup_datetime TIMESTAMP,
+    tpep_dropoff_datetime TIMESTAMP,
+    ...
+    PRIMARY KEY(id, tpep_pickup_datetime)
+) PARTITION BY RANGE (tpep_pickup_datetime);
+```
+
+Next the index is created on the partition key, which is automatically added to each partition table allowing for faster query planning 
+
+```sql
+CREATE INDEX ON par_trips (tpep_pickup_datetime);
+```
+
+Finally the partition tables are created. As there is only three months of data I decided to split by month. The from part is inclusive, but the to part is exclusive, so for example the first table holds values up to `2025-06-30 23:59:59`.
+
+```sql
+CREATE TABLE par_trips_y2025m06 PARTITION OF par_trips
+    FOR VALUES FROM ('2025-06-01 00:00:00') TO ('2025-07-01 00:00:00');
+
+CREATE TABLE par_trips_y2025m07 PARTITION OF par_trips
+    FOR VALUES FROM ('2025-07-01 00:00:00') TO ('2025-08-01 00:00:00');
+
+CREATE TABLE par_trips_y2025m08 PARTITION OF par_trips
+    FOR VALUES FROM ('2025-08-01 00:00:00') TO ('2025-09-01 00:00:00');
+
+```
+In the future if more tables are to be created one way is to just create a new table as above. However if a partition to be added already has a lot of data contained, it may be better to take a different approach. Below we create a table to hold all of the data from 2024. Next we create a check constraint to make sure the data conforms to the partition values, this constraint is deleted afterwards. Then we load the data, do any processing, and then finally attach the partition to the `par_trips` table.
+
+```sql
+CREATE TABLE par_trips_y2024
+  (LIKE par_trips INCLUDING DEFAULTS INCLUDING CONSTRAINTS);
+
+--This check is to make sure the table conforms to the partition values, delete after partition attached.
+ALTER TABLE par_trips_y2024 ADD CONSTRAINT y2024
+   CHECK ( tpep_pickup_datetime >= DATETIME '2024-01-01 00:00:00' 
+            AND tpep_pickup_datetime < DATETIME '2025-01-01 00:00:00');
+
+\copy par_trips_y2024 from 'yellow_cabs_2024'
+
+ALTER TABLE par_trips ATTACH PARTITION par_trips_y2024
+    FOR VALUES FROM ('2024-01-01 00:00:00') TO ('2025-01-01 00:00:00' );
+```
+
+Removing partitions are easily done with the following command, which removes it from the parent table, but keeps it in the database until any other work that needs to happen regarding it is done. It is also possible to just drop the partition table, but this has implications on locks on the parent table.
+
+```sql
+ALTER TABLE par_trips DETACH PARTITION par_trips_y2024 CONCURRENTLY;
+```
