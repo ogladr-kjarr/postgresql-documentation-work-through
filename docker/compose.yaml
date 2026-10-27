@@ -1,7 +1,7 @@
 services:
   main-db:
     build:
-      context: image/
+      context: images/database/
     container_name: main-db
     networks:
       - secure-network
@@ -21,7 +21,7 @@ services:
 
   standby-db:
     build:
-      context: image/
+      context: images/database
     container_name: standby-db
     networks:
       - secure-network
@@ -37,10 +37,20 @@ services:
         condition: service_healthy
         restart: true
 
+  sensors:
+    build:
+      context: images/sensor
+    container_name: sensor-readings
+    networks:
+      - secure-network
+    depends_on:
+      main-db:
+        condition: service_healthy
+        restart: true
+
 volumes:
   main-db-data: 
   standby-db-data:
-
 
 networks:
   secure-network:
