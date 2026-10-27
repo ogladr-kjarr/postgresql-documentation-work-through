@@ -1,0 +1,47 @@
+services:
+  main-db:
+    build:
+      context: image/
+    container_name: main-db
+    networks:
+      - secure-network
+    volumes:
+      - main-db-data:/var/lib/postgresql
+    environment:
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_HOST_AUTH_METHOD=${POSTGRES_HOST_AUTH_METHOD}
+      - POSTGRES_USER=${POSTGRES_USER}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      retries: 5
+      start_period: 30s
+      timeout: 10s
+
+  standby-db:
+    build:
+      context: image/
+    container_name: standby-db
+    networks:
+      - secure-network
+    volumes:
+      - standby-db-data:/var/lib/postgresql
+    environment:
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_HOST_AUTH_METHOD=${POSTGRES_HOST_AUTH_METHOD}
+      - POSTGRES_USER=${POSTGRES_USER}
+    depends_on:
+      main-db:
+        condition: service_healthy
+        restart: true
+
+volumes:
+  main-db-data: 
+  standby-db-data:
+
+
+networks:
+  secure-network:
+    internal: true
