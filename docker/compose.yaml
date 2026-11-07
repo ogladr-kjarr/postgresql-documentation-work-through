@@ -1,12 +1,14 @@
 services:
   main-db:
     build:
-      context: images/database/
+      context: images/database/server/
     container_name: main-db
     networks:
       - secure-network
     volumes:
-      - main-db-data:/var/lib/postgresql
+      - ./main-db-data/database:/var/lib/postgresql
+      - ./main-db-data/wals:/mnt/server/archivedir
+      - ./main-db-data/base-backup:/mnt/server/base-backup
     environment:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_DB=${POSTGRES_DB}
@@ -21,12 +23,13 @@ services:
 
   standby-db:
     build:
-      context: images/database
+      context: images/database/standby
     container_name: standby-db
     networks:
       - secure-network
     volumes:
-      - standby-db-data:/var/lib/postgresql
+      - ./standby-db-data/database:/var/lib/postgresql
+      - ./standby-db-data/wals:/mnt/server/archivedir
     environment:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_DB=${POSTGRES_DB}
@@ -48,9 +51,9 @@ services:
         condition: service_healthy
         restart: true
 
-volumes:
-  main-db-data: 
-  standby-db-data:
+#volumes:
+#  main-db-data: 
+#  standby-db-data:
 
 networks:
   secure-network:
